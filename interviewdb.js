@@ -1,0 +1,393 @@
+var pg = require('pg')
+var async = require('async')
+var bcrypt = require('bcrypt')
+
+var conString = "postgres://sengroup@localhost/senproj"
+
+var initializeDb = function initializeDb(callback) {
+	var client, release_client
+	async.waterfall([
+		function(callback) {
+			pg.connect(conString, callback)
+		},
+		function(cl, done, callback) {
+			client = cl
+			release_client = done
+
+			client.query('\
+				CREATE TABLE IF NOT EXISTS events (\
+				    name text PRIMARY KEY,\
+			    	criteria jsonb NOT NULL,\
+			    	details jsonb\
+				);\
+			', callback)
+		},
+		function(result, callback) {
+			client.query('\
+				CREATE TABLE IF NOT EXISTS people (\
+				    email text PRIMARY KEY,\
+				    password text NOT NULL,\
+				    role text NOT NULL,\
+				    details jsonb\
+				);\
+			', callback)
+		},
+		function(result, callback) {
+			client.query('\
+				CREATE TABLE IF NOT EXISTS registered (\
+				    email text,\
+				    event text,\
+				    FOREIGN KEY (email) REFERENCES people\
+				    ON DELETE CASCADE,\
+				    FOREIGN KEY (event) REFERENCES events\
+				    ON DELETE CASCADE,\
+				    PRIMARY KEY (email, event)\
+				);\
+			', callback)
+		},
+		function(result, callback) {
+			client.query('\
+				CREATE TABLE IF NOT EXISTS registerforevent (\
+				    email text,\
+				    event text,\
+				    FOREIGN KEY (email) REFERENCES people\
+				    ON DELETE CASCADE,\
+				    FOREIGN KEY (event) REFERENCES events\
+				    ON DELETE CASCADE,\
+				    PRIMARY KEY (email, event)\
+				);\
+			', callback)
+		},
+		function(result, callback) {
+			client.query('\
+				CREATE TABLE IF NOT EXISTS interviews (\
+				    id serial PRIMARY KEY,\
+				    interviewer text,\
+				    interviewee text,\
+				    event text,\
+				    time timestamp with time zone,\
+				    results jsonb,\
+				    FOREIGN KEY (interviewer) REFERENCES people\
+				    ON DELETE CASCADE,\
+				    FOREIGN KEY (interviewee) REFERENCES people\
+				    ON DELETE CASCADE,\
+				    FOREIGN KEY (event) REFERENCES events\
+				    ON DELETE CASCADE\
+				);\
+			', callback)
+		},
+		function(result, callback) {
+			release_client()
+			callback()
+		}
+	], callback)
+}
+
+var interviewDbFactory = function interviewDbFactory(callback) {
+	var interviewDb = {}
+
+	interviewDb.createEvent = function createEvent(event_name, criteria, details, callback) {
+		var client, release_client
+		async.waterfall([
+			function(callback) {
+				pg.connect(conString, callback)
+			},
+			function(cl, done, callback) {
+				client = cl
+				release_client = done
+
+				client.query('\
+					INSERT INTO events (name, criteria, details) VALUES ($1, $2, $3);\
+				', [event_name, criteria, details], callback)
+			},
+			function(result, callback) {
+				release_client()
+				callback()
+			}
+		], function(err) {
+			if (err) {
+				callback(new Error('003: Event already exists'))
+			} else {
+				callback()
+			}
+		})
+	}
+
+	interviewDb.getEvents = function getEvents(callback) {
+		var client, release_client
+		async.waterfall([
+			function(callback) {
+				pg.connect(conString, callback)
+			},
+			function(cl, done, callback) {
+				client = cl
+				release_client = done
+
+				client.query('\
+					SELECT array_agg(name) FROM events; \
+				', callback)
+			},
+			function(result, callback) {
+				release_client()
+				callback(null, result.rows[0].array_agg)
+			}
+		], callback)
+	}
+
+	interviewDb.getEvent = function getEvent(event_name, callback) {
+		var client, release_client
+		async.waterfall([
+			function(callback) {
+				pg.connect(conString, callback)
+			},
+			function(cl, done, callback) {
+				client = cl
+				release_client = done
+
+				client.query('\
+					SELECT * FROM events WHERE name=$1; \
+				', [event_name], callback)
+			},
+			function(result, callback) {
+				release_client()
+				if (result.rows.length == 1) {
+					callback(null, result.rows[0])
+				} else {
+					callback(new Error('002:Event does not exist'))
+				}
+			}
+		], callback)
+	}
+
+	interviewDb.deleteEvent = function deleteEvent(event_name, callback) {
+		var client, release_client
+		async.waterfall([
+			function(callback) {
+				pg.connect(conString, callback)
+			},
+			function(cl, done, callback) {
+				client = cl
+				release_client = done
+
+				client.query('\
+					DELETE FROM events WHERE name=$1; \
+				', [event_name], callback)
+			},
+			function(result, callback) {
+				release_client()
+				if(result.rowCount == 1) {
+					callback(null)
+				} else {
+					callback(new Error('001:Event does not exist'))
+				}
+			}
+		], callback)
+	}
+
+	interviewDb.createUser = function createUser(email, password, role, details, callback) {
+		var client, release_client, hashed_password
+		async.waterfall([
+			function(callback) {
+				bcrypt.hash(password, 8, callback)
+			},
+			function(hashed_password_temp, callback) {
+				hashed_password = hashed_password_temp
+				pg.connect(conString, callback)
+			},
+			function(cl, done, callback) {
+				client = cl
+				release_client = done
+
+				client.query('\
+					INSERT INTO people (email, password, role, details) VALUES ($1, $2, $3, $4);\
+				', [email, hashed_password, role, details], callback)
+			},
+			function(result, callback) {
+				release_client()
+				callback()
+			}
+		], function(err) {
+			if (err) {
+				callback(new Error('004: Account already exists'))
+			} else {
+				callback()
+			}
+		})
+	}
+
+	interviewDb.getUser = function getUser(email, callback) {
+		var client, release_client
+		async.waterfall([
+			function(callback) {
+				pg.connect(conString, callback)
+			},
+			function(cl, done, callback) {
+				client = cl
+				release_client = done
+
+				client.query('\
+					SELECT * FROM people WHERE email=$1; \
+				', [email], callback)
+			},
+			function(result, callback) {
+				release_client()
+				if (result.rows.length == 1) {
+					callback(null, result.rows[0])
+				} else {
+					callback(new Error('005:Account does not exist'))
+				}
+			}
+		], callback)
+	}
+
+	interviewDb.registerForEvent = function registerForEvent(email, event, callback) {
+		var client, release_client
+		async.waterfall([
+			function(callback) {
+				pg.connect(conString, callback)
+			},
+			function(cl, done, callback) {
+				client = cl
+				release_client = done
+
+				client.query('\
+					INSERT INTO registerforevent (email, event) VALUES ($1, $2);\
+				', [email, event], callback)
+			},
+			function(result, callback) {
+				release_client()
+				callback()
+			}
+		], function(err) {
+			if (err) {
+				console.log(err)
+				callback(new Error('006: Already Registered'))
+			} else {
+				callback()
+			}
+		})
+	}
+
+	interviewDb.getRegistrations = function getRegistrations(event_name, callback) {
+		var client, release_client
+		async.waterfall([
+			function(callback) {
+				pg.connect(conString, callback)
+			},
+			function(cl, done, callback) {
+				client = cl
+				release_client = done
+
+				client.query('\
+					SELECT array_agg(email) FROM registerforevent WHERE event=$1; \
+				', [event_name], callback)
+			},
+			function(result, callback) {
+				release_client()
+				callback(null, result.rows[0].array_agg)
+			}
+		], callback)
+	}
+
+	interviewDb.acceptRegistration = function acceptRegistration(event_name, email, callback) {
+		var client, release_client
+		async.waterfall([
+			function(callback) {
+				pg.connect(conString, callback)
+			},
+			function(cl, done, callback) {
+				client = cl
+				release_client = done
+
+				client.query('\
+					BEGIN;\
+				', callback)
+			},
+			function(result, callback) {
+				client.query('\
+					INSERT INTO registered (email, event) VALUES ($1, $2);\
+				', [email, event_name], callback)
+			},
+			function(result, callback) {
+				client.query('\
+					DELETE FROM registerforevent WHERE email=$1 AND event=$2;\
+				', [email, event_name], callback)
+			},
+			function(result, callback) {
+				client.query('\
+					COMMIT;\
+				', callback)
+			},
+			function(result, callback) {
+				release_client()
+				callback()
+			}
+		], function(err) {
+			if (err) {
+				console.log(err)
+				callback(new Error('007: Already Registered'))
+			} else {
+				callback()
+			}
+		})
+	}
+
+	interviewDb.getRegisteredUsers = function getRegisteredUsers(event_name, callback) {
+		var client, release_client
+		async.waterfall([
+			function(callback) {
+				pg.connect(conString, callback)
+			},
+			function(cl, done, callback) {
+				client = cl
+				release_client = done
+
+				client.query('\
+					SELECT array_agg(email) FROM registered WHERE event=$1; \
+				', [event_name], callback)
+			},
+			function(result, callback) {
+				release_client()
+				callback(null, result.rows[0].array_agg)
+			}
+		], callback)
+	}
+
+	interviewDb.createInterview = function createInterview(interviewer, interviewee, event_name, timestamp, callback) {
+		var client, release_client
+		async.waterfall([
+			function(callback) {
+				pg.connect(conString, callback)
+			},
+			function(cl, done, callback) {
+				client = cl
+				release_client = done
+
+				client.query('\
+					INSERT INTO interviews (interviewer, interviewee, event, time) VALUES ($1, $2, $3, $4);\
+				', [interviewer, interviewee, event_name, timestamp], callback)
+			},
+			function(result, callback) {
+				release_client()
+				callback()
+			}
+		], function(err) {
+			if (err) {
+				console.log(err)
+				callback(new Error('008: Already Exists'))
+			} else {
+				callback()
+			}
+		})
+	}
+
+	initializeDb(function(err) {
+		if (err) {
+			callback(err)
+		} else {
+			callback(null, interviewDb)
+		}
+	})
+}
+
+module.exports = interviewDbFactory
