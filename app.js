@@ -6,6 +6,7 @@ var cookieParser = require('cookie-parser')
 var bodyParser = require('body-parser')
 var session = require('express-session')
 var RedisStore = require('connect-redis')(session)
+var cors = require('cors')
 
 var routes = require('./routes/index')
 
@@ -44,6 +45,11 @@ app.use(function(req, res, next) {
     })
   }
 })
+
+app.use(cors({
+  origin: true,
+  methods: ['GET', 'PUT', 'POST', 'DELETE', 'PATCH']
+}))
 
 app.use('/', routes)
 
