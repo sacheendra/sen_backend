@@ -5,7 +5,7 @@ var bcrypt = require('bcrypt')
 
 var conString = "postgres://sengroup@localhost/senproj"
 
-var interviewDbFactory = require(__dirname + '/../interviewdb')
+var getInterviewDb = require(__dirname + '/../interviewdb')
 
 var destroyDb = function destroyDb(callback) {
     var client, release_client
@@ -44,9 +44,9 @@ var destroyDb = function destroyDb(callback) {
     ], callback)
 }
 
-describe('interviewDb', function() {
-    describe('#interviewDbFactory', function() {
-        it('should not return error', interviewDbFactory)
+describe('interviewDbFactory', function() {
+    describe('#getInterviewDb', function() {
+        it('should not return error', getInterviewDb)
     })
 })
 
@@ -54,7 +54,7 @@ describe('interviewDb', function() {
     var interviewDb
 
     before(function(done) {
-        interviewDbFactory(function(err, interviewDb_temp) {
+        getInterviewDb(function(err, interviewDb_temp) {
             if (err) return done(err)
             interviewDb = interviewDb_temp
             done()
@@ -65,10 +65,10 @@ describe('interviewDb', function() {
 
     describe('#createEvent', function() {
         it('should not return error', function(done) {
-            interviewDb.createEvent('event1', {}, {}, done)
+            interviewDb.createEvent('event1', {}, undefined, done)
         })
         it('should not return error', function(done) {
-            interviewDb.createEvent('event2', {}, {}, done)
+            interviewDb.createEvent('event2', {}, null, done)
         })
     })
 
@@ -84,9 +84,15 @@ describe('interviewDb', function() {
     describe('#getEvent', function() {
         it('should return an event object', function(done) {
             interviewDb.getEvent('event1', function(err, event) {
-                assert.deepEqual(event, { name: 'event1', criteria: {}, details: {} })
+                assert.deepEqual(event, { name: 'event1', criteria: {}, details: null })
                 done()
             })
+        })
+    })
+
+    describe('#updateEvent', function() {
+        it('should not return error', function(done) {
+            interviewDb.updateEvent('abc@def.com', {}, {}, done)
         })
     })
 
@@ -115,6 +121,12 @@ describe('interviewDb', function() {
                 assert.deepEqual(user, { email: 'abc@def.com', role: 'interviewee', details: {} })
                 done()
             })
+        })
+    })
+
+    describe('#updateUser', function() {
+        it('should not return error', function(done) {
+            interviewDb.updateUser('abc@def.com', {}, done)
         })
     })
 
@@ -155,8 +167,65 @@ describe('interviewDb', function() {
     })
 
     describe('#createInterview', function() {
+        it('should return interview id 1', function(done) {
+            interviewDb.createInterview('abc@def.com', 'ijk@xyz.com', 'event2', (new Date()).toISOString(), function(err, interview_id) {
+                assert.deepEqual(interview_id, 1)
+                done()
+            })
+        })
+    })
+
+    describe('#updateInterview', function() {
         it('should not return error', function(done) {
-            interviewDb.createInterview('abc@def.com', 'ijk@xyz.com', 'event2', (new Date()).toISOString(), done)
+            interviewDb.updateInterview('event2', 1, (new Date()).toISOString(), null, done)
+        })
+    })
+
+    describe('#getInterview', function() {
+        it('should return 1 interview', function(done) {
+            interviewDb.getInterview('event2', 1, function(err, interview) {
+                delete interview.time
+                assert.deepEqual(interview, { id: 1,
+                  interviewer: 'abc@def.com',
+                  interviewee: 'ijk@xyz.com',
+                  event: 'event2',
+                  results: null })
+                done()
+            })
+        })
+    })
+
+    describe('#getScheduleOfUser', function() {
+        it('should return 1 interview', function(done) {
+            interviewDb.getScheduleOfUser('abc@def.com', function(err, interviews) {
+                delete interviews[0].time
+                assert.deepEqual(interviews, [ { id: 1,
+                    interviewer: 'abc@def.com',
+                    interviewee: 'ijk@xyz.com',
+                    event: 'event2',
+                    results: null } ])
+                done()
+            })
+        })
+    })
+
+    describe('#getScheduleOfEvent', function() {
+        it('should return 1 interview', function(done) {
+            interviewDb.getScheduleOfEvent('event2', function(err, interviews) {
+                delete interviews[0].time
+                assert.deepEqual(interviews, [ { id: 1,
+                    interviewer: 'abc@def.com',
+                    interviewee: 'ijk@xyz.com',
+                    event: 'event2',
+                    results: null } ])
+                done()
+            })
+        })
+    })
+
+    describe('#deleteInterview', function() {
+        it('should not return error', function(done) {
+            interviewDb.deleteInterview('event2', 1, done)
         })
     })
 
