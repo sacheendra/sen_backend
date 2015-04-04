@@ -293,6 +293,42 @@ router.post('/events/:event_name/interviews/:id/start', function(req, res, next)
   }
 })
 
+router.post('/events/:event_name/interviews/:id/end', function(req, res, next) {
+  if (req.session.user_data) {
+    req.interviewDb.getInterview(req.params.event_name, req.params.id, function(err, result) {
+      if(err) return next(err)
+      else {
+        if (req.session.user_data.email === result.interviewee || req.session.user_data.email === result.interviewer) {
+          if (req.session.user_data.current_interview === req.params.id) {
+            delete req.session.user_data.current_interview
+            req.session.save(function(err) {
+              if(err) {
+                next(err)
+              } else {
+                res.send({completed: true})
+              }
+            })
+          } else {
+            var err = new Error('126: Not in Progress')
+            err.status=401
+            next(err)
+          }
+          req.session.user_data.current_interview = req.params.id
+          
+        } else {
+          var err = new Error('125: Not Authorized')
+          err.status=401
+          next(err)
+        }
+      }
+    })
+  } else {
+    var err = new Error('125: Not Authorized')
+    err.status=401
+    next(err)
+  }
+})
+
 router.patch('/events/:event_name/interviews/:id', function(req, res, next) {
   if (!req.body.timestamp && !req.body.results) {
     var err = new Error('118: Insufficient Information. Missing both timestamp and results')
