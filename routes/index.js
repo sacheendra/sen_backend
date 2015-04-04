@@ -3,6 +3,20 @@ var async = require('async')
 var _ = require('underscore')
 var router = express.Router()
 
+router.get('/time', function(req, res) {
+  res.send({current_time: (new Date()).toISOString()})
+})
+
+router.get('/session', function(req, res) {
+  if (req.session.user_data) {
+    res.send(req.session.user_data)
+  } else {
+    var err = new Error('123: Not Logged In')
+    err.status=400
+    next(err)
+  }
+})
+
 router.post('/login', function(req, res, next) {
   if (req.session.user_data) {
     var err = new Error('104: Already Logged In')
@@ -17,8 +31,9 @@ router.post('/login', function(req, res, next) {
           if(!result) {
               callback(new Error('101: Wrong Password'))
           } else {
-              req.session.user_data = result
-              req.session.save(callback)
+            delete result.password
+            req.session.user_data = result
+            req.session.save(callback)
           }
       }
     ], function(err) {
@@ -38,16 +53,6 @@ router.get('/logout', function(req, res) {
       res.send({logout: true})
     })
   }
-})
-
-router.get('/session', function(req, res) {
-  if (req.session.user_data) {
-      res.send(req.session.user_data)
-    } else {
-	var err = new Error('111: Not Logged In')
-    err.status=400
-    next(err)
-}
 })
 
 router.put('/users', function(req, res, next) {
@@ -70,6 +75,7 @@ router.get('/users/:email', function(req, res, next) {
   req.interviewDb.getUser(req.params.email, function(err, result) {
     if(err) return next(err)
     else {
+      delete result.password
       res.send(result)
     }
   })
@@ -243,12 +249,45 @@ router.get('/events/:event_name/interviews/:id', function(req, res, next) {
     req.interviewDb.getInterview(req.params.event_name, req.params.id, function(err, result) {
       if(err) return next(err)
       else {
-        if (req.session.user_data.role === "admin" || req.session.user_data.email === result.interviewee || req.session.user_data.email === result.interviewer)
-        res.send(result)
+        if (req.session.user_data.role === "admin" || req.session.user_data.email === result.interviewee || req.session.user_data.email === result.interviewer) {
+          res.send(result)
+        } else {
+          var err = new Error('121: Not Authorized')
+          err.status=401
+          next(err)
+        }
       }
     })
   } else {
     var err = new Error('121: Not Authorized')
+    err.status=401
+    next(err)
+  }
+})
+
+router.post('/events/:event_name/interviews/:id/start', function(req, res, next) {
+  if (req.session.user_data) {
+    req.interviewDb.getInterview(req.params.event_name, req.params.id, function(err, result) {
+      if(err) return next(err)
+      else {
+        if (req.session.user_data.email === result.interviewee || req.session.user_data.email === result.interviewer) {
+          req.session.user_data.current_interview = req.params.id
+          req.session.save(function(err) {
+            if(err) {
+              next(err)
+            } else {
+              res.send({started: true})
+            }
+          })
+        } else {
+          var err = new Error('124: Not Authorized')
+          err.status=401
+          next(err)
+        }
+      }
+    })
+  } else {
+    var err = new Error('124: Not Authorized')
     err.status=401
     next(err)
   }
