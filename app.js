@@ -48,7 +48,8 @@ app.use(function(req, res, next) {
 
 app.use(cors({
   origin: true,
-  methods: ['GET', 'PUT', 'POST', 'DELETE', 'PATCH']
+  methods: ['GET', 'PUT', 'POST', 'DELETE', 'PATCH'],
+  credentials: true
 }))
 
 app.use('/', routes)

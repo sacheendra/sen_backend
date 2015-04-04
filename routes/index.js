@@ -40,6 +40,16 @@ router.get('/logout', function(req, res) {
   }
 })
 
+router.get('/session', function(req, res) {
+  if (req.session.user_data) {
+      res.send(req.session.user_data)
+    } else {
+	var err = new Error('111: Not Logged In')
+    err.status=400
+    next(err)
+}
+})
+
 router.put('/users', function(req, res, next) {
   var user = req.body
   if (!user.email || !user.password || !user.role) {
