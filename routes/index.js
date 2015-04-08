@@ -301,6 +301,7 @@ router.post('/events/:event_name/interviews/:id/end', function(req, res, next) {
         if (req.session.user_data.email === result.interviewee || req.session.user_data.email === result.interviewer) {
           if (req.session.user_data.current_interview === req.params.id) {
             delete req.session.user_data.current_interview
+            delete req.session.user_data.lang
             req.session.save(function(err) {
               if(err) {
                 next(err)
@@ -313,8 +314,6 @@ router.post('/events/:event_name/interviews/:id/end', function(req, res, next) {
             err.status=401
             next(err)
           }
-          req.session.user_data.current_interview = req.params.id
-          
         } else {
           var err = new Error('125: Not Authorized')
           err.status=401
@@ -324,6 +323,46 @@ router.post('/events/:event_name/interviews/:id/end', function(req, res, next) {
     })
   } else {
     var err = new Error('125: Not Authorized')
+    err.status=401
+    next(err)
+  }
+})
+
+router.post('/events/:event_name/interviews/:id/setlang', function(req, res, next) {
+  if (req.body && typeof req.body.lang === "string") {
+    if (req.session.user_data) {
+      req.interviewDb.getInterview(req.params.event_name, req.params.id, function(err, result) {
+        if(err) return next(err)
+        else {
+          if (req.session.user_data.email === result.interviewee || req.session.user_data.email === result.interviewer) {
+            if (req.session.user_data.current_interview === req.params.id) {
+              req.session.user_data.lang = req.body.lang
+              req.session.save(function(err) {
+                if(err) {
+                  next(err)
+                } else {
+                  res.send({language_set: true})
+                }
+              })
+            } else {
+              var err = new Error('128: Not in Progress')
+              err.status=401
+              next(err)
+            }
+          } else {
+            var err = new Error('127: Not Authorized')
+            err.status=401
+            next(err)
+          }
+        }
+      })
+    } else {
+      var err = new Error('129: Not Authorized')
+      err.status=401
+      next(err)
+    }
+  } else {
+    var err = new Error('130: Requires property lang in body')
     err.status=401
     next(err)
   }
