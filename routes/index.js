@@ -3,6 +3,8 @@ var async = require('async')
 var _ = require('underscore')
 var router = express.Router()
 
+var compile = require(__dirname + '/../compiler')
+
 router.get('/time', function(req, res) {
   res.send({current_time: (new Date()).toISOString()})
 })
@@ -271,7 +273,10 @@ router.post('/events/:event_name/interviews/:id/start', function(req, res, next)
       if(err) return next(err)
       else {
         if (req.session.user_data.email === result.interviewee || req.session.user_data.email === result.interviewer) {
-          req.session.user_data.current_interview = req.params.id
+          req.session.user_data.current_interview = {
+            event_name: req.params.event_name,
+            id: req.params.id
+          }
           req.session.save(function(err) {
             if(err) {
               next(err)
@@ -394,7 +399,7 @@ router.patch('/events/:event_name/interviews/:id', function(req, res, next) {
   }
 })
 
-router.get('/users/:email/interviews', function(req, res, result) {
+router.get('/users/:email/interviews', function(req, res, next) {
   if (req.session.user_data && (req.session.user_data.role === "admin" || req.session.user_data.email === req.params.email)) {
     req.interviewDb.getScheduleOfUser(req.params.email, function(err, result) {
       if(err) return next(err)
@@ -409,7 +414,7 @@ router.get('/users/:email/interviews', function(req, res, result) {
   }
 })
 
-router.get('/events/:event_name/interviews', function(req, res, result) {
+router.get('/events/:event_name/interviews', function(req, res, next) {
   if (req.session.user_data && req.session.user_data.role === "admin") {
     req.interviewDb.getScheduleOfEvent(req.params.event_name, function(err, result) {
       if(err) return next(err)
@@ -419,6 +424,27 @@ router.get('/events/:event_name/interviews', function(req, res, result) {
     })
   } else {
     var err = new Error('122: Not Authorized')
+    err.status=401
+    next(err)
+  }
+})
+
+router.post('/compile', function(req, res, next) {
+  if (req.session.user_data) {
+    if (req.session.user_data.lang) {
+      compile(req.session.user_data.lang, req.body.source, req,body.input, function(err, result) {
+        if(err) return next(err)
+        else {
+          res.send(result)
+        }
+      })
+    } else {
+      var err = new Error('132: Language Not Set')
+      err.status=401
+      next(err)
+    }
+  } else {
+    var err = new Error('131: Not Authorized')
     err.status=401
     next(err)
   }
