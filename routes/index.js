@@ -165,6 +165,21 @@ router.patch('/events/:event_name', function(req, res, next) {
   }
 })
 
+router.delete('/events/:event_name', function(req, res, next) {
+  if (req.session.user_data && req.session.user_data.role === "admin") {
+    req.interviewDb.deleteEvent(req.params.event_name, function(err, result) {
+      if(err) return next(err)
+      else {
+        res.send({deleted: true})
+      }
+    })
+  } else {
+    var err = new Error('134: Not Authorized')
+    err.status=401
+    next(err)
+  }
+})
+
 router.post('/events/:event_name/register', function(req, res, next) {
   if (req.session.user_data && req.session.user_data.email) {
     req.interviewDb.registerForEvent(req.session.user_data.email, req.params.event_name, function(err, result) {
@@ -397,6 +412,26 @@ router.patch('/events/:event_name/interviews/:id', function(req, res, next) {
       }
     })
   }
+})
+
+router.patch('/events/:event_name/interviews/:id', function(req, res, next) {
+  req.interviewDb.getInterview(req.params.id, function(err, result) {
+    if(err) return next(err)
+    else {
+      if (req.session.user_data && (req.session.user_data.role === "admin" || req.session.user_data.email === result.interviewer)) {
+        req.interviewDb.deleteInterview(req.params.event_name, req.params.id, function(err, result) {
+          if(err) return next(err)
+          else {
+            res.send({deleted: true})
+          }
+        })
+      } else {
+        var err = new Error('135: Not Authorized')
+        err.status=401
+        next(err)
+      }
+    }
+  })
 })
 
 router.get('/users/:email/interviews', function(req, res, next) {
