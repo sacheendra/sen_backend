@@ -268,7 +268,7 @@ var getInterviewDb = function getInterviewDb(callback) {
           delete user_data.password
           bcrypt.compare(password, original_password, callback)
         } else {
-          callback(new Error('005:Account does not exist'))
+          callback(new Error('013:Account does not exist'))
         }
       },
       function(result, callback) {
