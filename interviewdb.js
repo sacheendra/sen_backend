@@ -708,6 +708,72 @@ var getInterviewDb = function getInterviewDb(callback) {
     ], callback)
   }
 
+  interviewDb.getEventsNotRegisteredFor = function getEventsNotRegisteredFor(email, callback) {
+    var client, release_client
+    async.waterfall([
+      function(callback) {
+        pg.connect(conString, callback)
+      },
+      function(cl, done, callback) {
+        client = cl
+        release_client = done
+
+        client.query('\
+          SELECT array_agg(events.name) FROM events, registered, registerforevent \
+          WHERE (events.name!=registered.event AND registered.email=$1) AND (events.name!=registerforevent.event AND registerforevent.email=$1); \
+        ', [email], callback)
+      },
+      function(result, callback) {
+        release_client()
+        callback(null, result.rows[0].array_agg)
+      }
+    ], callback)
+  }
+
+  interviewDb.getEventsRegisteredFor = function getEventsRegisteredFor(email, callback) {
+    var client, release_client
+    async.waterfall([
+      function(callback) {
+        pg.connect(conString, callback)
+      },
+      function(cl, done, callback) {
+        client = cl
+        release_client = done
+
+        client.query('\
+          SELECT array_agg(event) FROM registerforevent \
+          WHERE registerforevent.email=$1; \
+        ', [email], callback)
+      },
+      function(result, callback) {
+        release_client()
+        callback(null, result.rows[0].array_agg)
+      }
+    ], callback)
+  }
+
+  interviewDb.getEventsApprovedFor = function getEventsApprovedFor(email, callback) {
+    var client, release_client
+    async.waterfall([
+      function(callback) {
+        pg.connect(conString, callback)
+      },
+      function(cl, done, callback) {
+        client = cl
+        release_client = done
+
+        client.query('\
+          SELECT array_agg(event) FROM registered \
+          WHERE registered.email=$1; \
+        ', [email], callback)
+      },
+      function(result, callback) {
+        release_client()
+        callback(null, result.rows[0].array_agg)
+      }
+    ], callback)
+  }
+
   interviewDb.getScheduleOfEvent = function getScheduleOfEvent(event_name, callback) {
     var client, release_client
     async.waterfall([

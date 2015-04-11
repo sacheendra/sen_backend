@@ -483,6 +483,51 @@ router.get('/users/:email/interviews', function(req, res, next) {
   }
 })
 
+router.get('/users/:email/events/notregistered', function(req, res, next) {
+  if (req.session.user_data && (req.session.user_data.role === "admin" || req.session.user_data.email === req.params.email)) {
+    req.interviewDb.getEventsNotRegisteredFor(req.params.email, function(err, result) {
+      if(err) return next(err)
+      else {
+        res.send(result)
+      }
+    })
+  } else {
+    var err = new Error('139: Not Authorized')
+    err.status=401
+    next(err)
+  }
+})
+
+router.get('/users/:email/events/registered', function(req, res, next) {
+  if (req.session.user_data && (req.session.user_data.role === "admin" || req.session.user_data.email === req.params.email)) {
+    req.interviewDb.getEventsRegisteredFor(req.params.email, function(err, result) {
+      if(err) return next(err)
+      else {
+        res.send(result)
+      }
+    })
+  } else {
+    var err = new Error('140: Not Authorized')
+    err.status=401
+    next(err)
+  }
+})
+
+router.get('/users/:email/events/approved', function(req, res, next) {
+  if (req.session.user_data && (req.session.user_data.role === "admin" || req.session.user_data.email === req.params.email)) {
+    req.interviewDb.getEventsApprovedFor(req.params.email, function(err, result) {
+      if(err) return next(err)
+      else {
+        res.send(result)
+      }
+    })
+  } else {
+    var err = new Error('141: Not Authorized')
+    err.status=401
+    next(err)
+  }
+})
+
 router.get('/events/:event_name/interviews', function(req, res, next) {
   if (req.session.user_data && req.session.user_data.role === "admin") {
     req.interviewDb.getScheduleOfEvent(req.params.event_name, function(err, result) {
