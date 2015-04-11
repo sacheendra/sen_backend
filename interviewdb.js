@@ -1,6 +1,11 @@
 var pg = require('pg')
 var async = require('async')
 var bcrypt = require('bcrypt')
+var randomstring = require('randomstring')
+
+var api_key = 'key-2-0bnmjo68kt7q42m1-bdp7cryxayfk4';
+var domain = 'sacheendra.me';
+var mailgun = require('mailgun-js')({apiKey: api_key, domain: domain});
 
 var conString = "postgres://sengroup@localhost/senproj"
 
@@ -214,8 +219,9 @@ var getInterviewDb = function getInterviewDb(callback) {
     ], callback)
   }
 
-  interviewDb.createUser = function createUser(email, password, role, details, callback) {
+  interviewDb.createUser = function createUser(email, role, details, callback) {
     var client, release_client, hashed_password
+    var password = randomstring.generate(10)
     async.waterfall([
       function(callback) {
         bcrypt.hash(password, 8, callback)
@@ -234,8 +240,22 @@ var getInterviewDb = function getInterviewDb(callback) {
       },
       function(result, callback) {
         release_client()
-        callback()
-      }
+
+        var data = {
+          from: 'Account Manager <accounts@sacheendra.me>',
+          to: email,
+          subject: 'New User Password',
+          text: password
+        };
+         
+        mailgun.messages().send(data, function (err, body) {
+          if(err) {
+            callback(err)
+          } else {
+            callback()
+          }
+        });
+      },
     ], function(err) {
       if (err) {
         console.log(err)
@@ -328,6 +348,92 @@ var getInterviewDb = function getInterviewDb(callback) {
       if (err) {
         console.log(err)
         callback(new Error('010: Unable to update'))
+      } else {
+        callback()
+      }
+    })
+  }
+
+  interviewDb.updateUserPassword = function updateUserPassword(email, old_password, password, callback) {
+    var client, release_client, hashed_password
+    async.waterfall([
+      function(callback) {
+        bcrypt.hash(password, 8, callback)
+      },
+      function(hashed_password_temp, callback) {
+        hashed_password = hashed_password_temp
+        pg.connect(conString, callback)
+      },
+      function(cl, done, callback) {
+        client = cl
+        release_client = done
+
+        interviewDb.authenticateUser(email, old_password, callback)
+      },
+      function(user_data, callback) {
+        if (user_data) {
+          client.query('\
+            UPDATE people SET (password)=($2) WHERE email=$1\
+          ', [email, hashed_password], callback)
+        } else {
+          callback(new Error('014: Incorrect Password'))
+        }
+      },
+      function(result, callback) {
+        release_client()
+        callback()
+      }
+    ], function(err) {
+      if (err) {
+        console.log(err)
+        callback(new Error('014: Incorrect Password'))
+      } else {
+        callback()
+      }
+    })
+  }
+
+  interviewDb.resetUserPassword = function resetUserPassword(email, callback) {
+    var client, release_client, hashed_password
+    var password = randomstring.generate(10)
+    async.waterfall([
+      function(callback) {
+        bcrypt.hash(password, 8, callback)
+      },
+      function(hashed_password_temp, callback) {
+        hashed_password = hashed_password_temp
+        pg.connect(conString, callback)
+      },
+      function(cl, done, callback) {
+        client = cl
+        release_client = done
+
+        client.query('\
+          UPDATE people SET (password)=($2) WHERE email=$1\
+        ', [email, hashed_password], callback)
+      },
+      function(result, callback) {
+        release_client()
+
+        var data = {
+          from: 'Account Manager <accounts@sacheendra.me>',
+          to: email,
+          subject: 'Reset Password',
+          text: password
+        };
+         
+        mailgun.messages().send(data, function (err, body) {
+          if(err) {
+            callback(err)
+          } else {
+            callback()
+          }
+        });
+      }
+    ], function(err) {
+      if (err) {
+        console.log(err)
+        callback(new Error('015: User does not exist'))
       } else {
         callback()
       }

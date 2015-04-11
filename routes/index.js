@@ -59,12 +59,12 @@ router.get('/logout', function(req, res) {
 
 router.put('/users', function(req, res, next) {
   var user = req.body
-  if (!user.email || !user.password || !user.role) {
+  if (!user.email || !user.role) {
     var err = new Error('102: Insufficient Information. Require email, password, role')
     err.status=400
     next(err)
   } else {
-    req.interviewDb.createUser(user.email, user.password, user.role, _.omit(user, 'email', 'password', 'role'), function(err, result) {
+    req.interviewDb.createUser(user.email, user.role, _.omit(user, 'email', 'password', 'role'), function(err, result) {
       if(err) return next(err)
       else {
         res.send({created: true})
@@ -102,6 +102,40 @@ router.patch('/users/:email', function(req, res, next) {
       next(err)
     }
   }
+})
+
+router.post('/users/:email/changepwd', function(req, res, next) {
+  if (_.isEmpty(req.body)) {
+    var err = new Error('137: Insufficient Information. Empty body')
+    err.status=400
+    next(err)
+  } else if (!req.body.old_password || !req.body.password) {
+    var err = new Error('138: Require both old password and new password in the body')
+    err.status=400
+    next(err)
+  } else {
+    if (req.session.user_data && req.session.user_data.email === req.params.email) {
+      req.interviewDb.updateUserPassword(req.params.email, req.body.old_password, req.body.password, function(err, result) {
+        if(err) return next(err)
+        else {
+          res.send({password_changed: true})
+        }
+      })
+    } else {
+      var err = new Error('136: Not Authorized')
+      err.status=401
+      next(err)
+    }
+  }
+})
+
+router.post('/users/:email/resetpwd', function(req, res, next) {
+  req.interviewDb.resetUserPassword(req.params.email, function(err, result) {
+    if(err) return next(err)
+    else {
+      res.send({password_changed: true})
+    }
+  })
 })
 
 router.put('/events', function(req, res, next) {
