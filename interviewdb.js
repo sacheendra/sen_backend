@@ -719,8 +719,8 @@ var getInterviewDb = function getInterviewDb(callback) {
         release_client = done
 
         client.query('\
-          SELECT array_agg(events.name) FROM events, registered, registerforevent \
-          WHERE (events.name!=registered.event AND registered.email=$1) AND (events.name!=registerforevent.event AND registerforevent.email=$1); \
+          SELECT array_agg(events.name) FROM events \
+          WHERE (events.name NOT IN (SELECT registered.event FROM registered WHERE registered.email=$1) AND events.name NOT IN (SELECT registerforevent.event FROM registerforevent WHERE registerforevent.email=$1)); \
         ', [email], callback)
       },
       function(result, callback) {
