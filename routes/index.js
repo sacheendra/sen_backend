@@ -428,7 +428,7 @@ router.patch('/events/:event_name/interviews/:id', function(req, res, next) {
     err.status=400
     next(err)
   } else {
-    req.interviewDb.getInterview(req.params.id, function(err, result) {
+    req.interviewDb.getInterview(req.params.event_name, req.params.id, function(err, result) {
       if(err) return next(err)
       else {
         if (req.session.user_data && (req.session.user_data.role === "admin" || req.session.user_data.email === result.interviewer)) {
@@ -448,8 +448,8 @@ router.patch('/events/:event_name/interviews/:id', function(req, res, next) {
   }
 })
 
-router.patch('/events/:event_name/interviews/:id', function(req, res, next) {
-  req.interviewDb.getInterview(req.params.id, function(err, result) {
+router.delete('/events/:event_name/interviews/:id', function(req, res, next) {
+  req.interviewDb.getInterview(req.params.event_name, req.params.id, function(err, result) {
     if(err) return next(err)
     else {
       if (req.session.user_data && (req.session.user_data.role === "admin" || req.session.user_data.email === result.interviewer)) {
