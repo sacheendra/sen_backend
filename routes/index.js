@@ -322,10 +322,7 @@ router.post('/events/:event_name/interviews/:id/start', function(req, res, next)
       if(err) return next(err)
       else {
         if (req.session.user_data.email === result.interviewee || req.session.user_data.email === result.interviewer) {
-          req.session.user_data.current_interview = {
-            event_name: req.params.event_name,
-            id: req.params.id
-          }
+          req.session.user_data.current_interview = _.omit(result, "results", "time")
           req.session.save(function(err) {
             if(err) {
               next(err)
@@ -353,7 +350,7 @@ router.post('/events/:event_name/interviews/:id/end', function(req, res, next) {
       if(err) return next(err)
       else {
         if (req.session.user_data.email === result.interviewee || req.session.user_data.email === result.interviewer) {
-          if (req.session.user_data.current_interview && _.isEqual(req.session.user_data.current_interview, { event_name: req.params.event_name, id: req.params.id })) {
+          if (req.session.user_data.current_interview && _.isEqual(req.session.user_data.current_interview, _.omit(result, "results", "time"))) {
             delete req.session.user_data.current_interview
             delete req.session.user_data.lang
             req.session.save(function(err) {
