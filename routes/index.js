@@ -546,7 +546,7 @@ router.get('/events/:event_name/interviews', function(req, res, next) {
 router.post('/compile', function(req, res, next) {
   if (req.session.user_data) {
     if (req.session.user_data.lang) {
-      compile(req.session.user_data.lang, req.body.source, req,body.input, function(err, result) {
+      compile(req.session.user_data.lang, req.body.source, req.body.input, function(err, result) {
         if(err) return next(err)
         else {
           res.send(result)
