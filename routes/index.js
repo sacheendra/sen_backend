@@ -322,10 +322,7 @@ router.post('/events/:event_name/interviews/:id/start', function(req, res, next)
       if(err) return next(err)
       else {
         if (req.session.user_data.email === result.interviewee || req.session.user_data.email === result.interviewer) {
-          req.session.user_data.current_interview = {
-            event_name: req.params.event_name,
-            id: req.params.id
-          }
+          req.session.user_data.current_interview = _.omit(result, "results", "time")
           req.session.save(function(err) {
             if(err) {
               next(err)
@@ -353,7 +350,7 @@ router.post('/events/:event_name/interviews/:id/end', function(req, res, next) {
       if(err) return next(err)
       else {
         if (req.session.user_data.email === result.interviewee || req.session.user_data.email === result.interviewer) {
-          if (req.session.user_data.current_interview && _.isEqual(req.session.user_data.current_interview, { event_name: req.params.event_name, id: req.params.id })) {
+          if (req.session.user_data.current_interview && _.isEqual(req.session.user_data.current_interview, _.omit(result, "results", "time"))) {
             delete req.session.user_data.current_interview
             delete req.session.user_data.lang
             req.session.save(function(err) {
@@ -428,7 +425,7 @@ router.patch('/events/:event_name/interviews/:id', function(req, res, next) {
     err.status=400
     next(err)
   } else {
-    req.interviewDb.getInterview(req.params.id, function(err, result) {
+    req.interviewDb.getInterview(req.params.event_name, req.params.id, function(err, result) {
       if(err) return next(err)
       else {
         if (req.session.user_data && (req.session.user_data.role === "admin" || req.session.user_data.email === result.interviewer)) {
@@ -448,8 +445,8 @@ router.patch('/events/:event_name/interviews/:id', function(req, res, next) {
   }
 })
 
-router.patch('/events/:event_name/interviews/:id', function(req, res, next) {
-  req.interviewDb.getInterview(req.params.id, function(err, result) {
+router.delete('/events/:event_name/interviews/:id', function(req, res, next) {
+  req.interviewDb.getInterview(req.params.event_name, req.params.id, function(err, result) {
     if(err) return next(err)
     else {
       if (req.session.user_data && (req.session.user_data.role === "admin" || req.session.user_data.email === result.interviewer)) {
@@ -546,7 +543,7 @@ router.get('/events/:event_name/interviews', function(req, res, next) {
 router.post('/compile', function(req, res, next) {
   if (req.session.user_data) {
     if (req.session.user_data.lang) {
-      compile(req.session.user_data.lang, req.body.source, req,body.input, function(err, result) {
+      compile(req.session.user_data.lang, req.body.source, req.body.input, function(err, result) {
         if(err) return next(err)
         else {
           res.send(result)
