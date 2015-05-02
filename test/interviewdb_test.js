@@ -103,20 +103,18 @@ describe('interviewDb', function() {
     })
 
     describe('#createUser', function() {
+        this.timeout(10000)
         it('should not return error', function(done) {
-            interviewDb.createUser('abc@def.com', 'password', 'interviewee', {}, done)
+            interviewDb.createUser('abc@def.com', 'interviewee', {}, done)
         })
         it('should not return error', function(done) {
-            interviewDb.createUser('ijk@xyz.com', 'password', 'interviewer', {}, done)
+            interviewDb.createUser('ijk@xyz.com', 'interviewer', {}, done)
         })
     })
 
     describe('#getUser', function() {
         it('should return a user object', function(done) {
             interviewDb.getUser('abc@def.com', function(err, user) {
-                var password_match = bcrypt.compareSync('password', user.password)
-                assert.deepEqual(password_match, true)
-
                 delete user.password
                 assert.deepEqual(user, { email: 'abc@def.com', role: 'interviewee', details: {} })
                 done()
