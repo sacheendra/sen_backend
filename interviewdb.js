@@ -22,8 +22,8 @@ var initializeDb = function initializeDb(callback) {
       client.query('\
         CREATE TABLE IF NOT EXISTS events (\
             name text PRIMARY KEY,\
-            criteria jsonb NOT NULL,\
-            details jsonb\
+            criteria json NOT NULL,\
+            details json\
         );\
       ', callback)
     },
@@ -33,7 +33,7 @@ var initializeDb = function initializeDb(callback) {
             email text PRIMARY KEY,\
             password text NOT NULL,\
             role text NOT NULL,\
-            details jsonb\
+            details json\
         );\
       ', callback)
     },
@@ -71,7 +71,7 @@ var initializeDb = function initializeDb(callback) {
             interviewee text,\
             event text,\
             time timestamp with time zone,\
-            results jsonb,\
+            results json,\
             FOREIGN KEY (interviewer) REFERENCES people\
             ON DELETE CASCADE,\
             FOREIGN KEY (interviewee) REFERENCES people\
