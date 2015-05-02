@@ -1,7 +1,4 @@
 [submodule "signalmaster"]
 	path = signalmaster
 	url = https://github.com/andyet/signalmaster.git
-
-[submodule "etherpad-lite"]
-    path = etherpad-lite
-    url = https://github.com/andyet/signalmaster.git
+    
